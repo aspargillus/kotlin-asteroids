@@ -43,6 +43,26 @@ class InteractionsTest {
 
         assertThat(interactions.findInteraction(object1, object2)).isSameAs(interaction)
     }
+
+    @Test
+    fun `executing interactions can use transactions`() {
+        val object1 = InteractionTestObject()
+        val object2 = InteractionTestObject()
+        val object3 = InteractionTestObject()
+        val knownObjects = SpaceObjectCollection().also { it.addAll(listOf(object1, object2)) }
+
+        val interactions = Interactions(knownObjects)
+        interactions.register(InteractionTestObject::class, InteractionTestObject::class) { o1, o2, transaction ->
+            transaction.remove(o1)
+            transaction.remove(o2)
+            transaction.add(object3)
+        }
+        val transaction = Transaction()
+        interactions.executeInteraction(object1, object2, transaction)
+
+        assertThat(transaction.adds).containsExactly(object3)
+        assertThat(transaction.removes).containsExactlyInAnyOrder(object1, object2)
+    }
 }
 
 class InteractionTestObject : ISpaceObject {
@@ -67,6 +87,11 @@ class Interactions(private val knownObjects: SpaceObjectCollection) {
 
     fun beginInteractions() {
         knownObjects.forEach { it.subscriptions.beforeInteractions() }
+    }
+
+    fun executeInteraction(object1: ISpaceObject, object2: ISpaceObject, transaction: Transaction) {
+        val interaction = findInteraction(object1, object2)
+        interaction?.let { it(object1, object2, transaction) }
     }
 
     fun findInteraction(object1: ISpaceObject,object2: ISpaceObject): (Interaction)? {
