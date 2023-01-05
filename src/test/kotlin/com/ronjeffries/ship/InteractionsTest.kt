@@ -34,14 +34,15 @@ class InteractionsTest {
     @Test
     fun `interaction lookup yields previously registered lambda`() {
         val object1 = InteractionTestObject()
-        val object2 = InteractionTestObject()
+        val object2 = object : InteractionTestObject() {}
         val knownObjects = SpaceObjectCollection().also { it.addAll(listOf(object1, object2)) }
 
         val interactions = Interactions(knownObjects)
         val interaction = { _: ISpaceObject, _: ISpaceObject, _: Transaction -> }
-        interactions.register(InteractionTestObject::class, InteractionTestObject::class, interaction)
+        interactions.register(object1::class, object2::class, interaction)
 
         assertThat(interactions.findInteraction(object1, object2)).isSameAs(interaction)
+        assertThat(interactions.findInteraction(object2, object1)).isSameAs(interaction)
     }
 
     @Test
@@ -65,7 +66,7 @@ class InteractionsTest {
     }
 }
 
-class InteractionTestObject : ISpaceObject {
+open class InteractionTestObject : ISpaceObject {
     var beforeInteractionsCalled: Boolean = false
 
     override fun update(deltaTime: Double, trans: Transaction) {
@@ -102,5 +103,13 @@ class Interactions(private val knownObjects: SpaceObjectCollection) {
         registeredInteractions[makeKey(class1, class2)] = interaction
     }
 
-    private fun makeKey(class1: KClass<out ISpaceObject>, class2: KClass<out ISpaceObject>) = Pair(class1, class2)
+    private fun makeKey(
+        class1: KClass<out ISpaceObject>,
+        class2: KClass<out ISpaceObject>
+    ): Pair<KClass<out ISpaceObject>, KClass<out ISpaceObject>> {
+        return if (class1.hashCode() < class2.hashCode())
+            Pair(class1, class2)
+        else
+            Pair(class2, class1)
+    }
 }
