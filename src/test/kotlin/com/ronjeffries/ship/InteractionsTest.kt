@@ -95,10 +95,12 @@ class Interactions(private val knownObjects: SpaceObjectCollection) {
     }
 
     fun findInteraction(object1: ISpaceObject,object2: ISpaceObject): (Interaction)? {
-        return registeredInteractions[Pair(object1::class, object2::class)]
+        return registeredInteractions[makeKey(object1::class, object2::class)]
     }
 
     fun register(class1: KClass<out ISpaceObject>, class2: KClass<out ISpaceObject>, interaction: Interaction) {
-        registeredInteractions[Pair(class1, class2)] = interaction
+        registeredInteractions[makeKey(class1, class2)] = interaction
     }
+
+    private fun makeKey(class1: KClass<out ISpaceObject>, class2: KClass<out ISpaceObject>) = Pair(class1, class2)
 }
